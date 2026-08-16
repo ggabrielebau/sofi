@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#fde7f0">
+<title>Per Sofia 💗</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(160deg, #fde7f0 0%, #fce4ec 35%, #e8def8 70%, #dbeafe 100%);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    position: fixed;
+    width: 100%;
+  }
+
+  /* ---------- HUD ---------- */
+  .hud {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .coins {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ad3c74;
+    box-shadow: 0 2px 12px rgba(173,60,116,0.12);
+    transition: transform 0.15s ease;
+  }
+  .coins.bump { transform: scale(1.12); }
+  .shop-btn {
+    pointer-events: auto;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: none;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ad3c74;
+    box-shadow: 0 2px 12px rgba(173,60,116,0.12);
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s ease, background 0.2s;
+  }
+  .shop-btn:active { transform: scale(0.94); }
+
+  /* ---------- Area di gioco ---------- */
+  .playarea {
+    position: fixed;
+    inset: 0;
+    cursor: pointer;
+  }
+
+  .hint {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #b0447a;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    padding: 0 24px;
+    width: 100%;
+  }
+  .hint h1 {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: normal;
+    font-size: clamp(1.8rem, 8vw, 3rem);
+  }
+  .hint p {
+    margin-top: 10px;
+    font-size: clamp(0.9rem, 3.5vw, 1rem);
+    color: #c77ba0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+  .hint.hidden { opacity: 0; }
+
+  .msg {
+    position: fixed;
+    pointer-events: none;
+    white-space: nowrap;
+    font-size: clamp(1.05rem, 4.5vw, 1.5rem);
+    font-family: Georgia, serif;
+    color: #ad3c74;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    animation: floatUp 2.2s ease-out forwards;
+    z-index: 10;
+  }
+  @keyframes floatUp {
+    0%   { transform: translate(-50%,0) scale(0.4) rotate(var(--rot)); opacity: 0; }
+    12%  { transform: translate(-50%,-14px) scale(1.08) rotate(var(--rot)); opacity: 1; }
+    100% { transform: translate(-50%,-120px) scale(1) rotate(var(--rot)); opacity: 0; }
+  }
+
+  .heart-fx {
+    position: fixed;
+    pointer-events: none;
+    font-size: 1.05rem;
+    animation: drift 1.7s ease-out forwards;
+    z-index: 9;
+  }
+  @keyframes drift {
+    0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1) rotate(var(--hr)); opacity: 0; }
+  }
+
+  .coin-fx {
+    position: fixed;
+    pointer-events: none;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ad3c74;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.9);
+    animation: coinUp 1.1s ease-out forwards;
+    z-index: 11;
+  }
+  .coin-fx.bonus { font-size: 1.25rem; color: #d4267a; }
+  @keyframes coinUp {
+    0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 0; }
+    20%  { transform: translate(-50%,-70%) scale(1.15); opacity: 1; }
+    100% { transform: translate(-50%,-180%) scale(1); opacity: 0; }
+  }
+
+  /* ---------- Shop (stile Apple) ---------- */
+  .shop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(60,30,50,0.25);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .shop-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .shop-sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    max-height: 82%;
+    background: rgba(252,250,253,0.92);
+    backdrop-filter: blur(30px) saturate(1.4);
+    -webkit-backdrop-filter: blur(30px) saturate(1.4);
+    border-radius: 24px 24px 0 0;
+    z-index: 101;
+    transform: translateY(105%);
+    transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -8px 40px rgba(120,50,90,0.18);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .shop-sheet.open { transform: translateY(0); }
+
+  .sheet-handle {
+    width: 38px; height: 5px;
+    background: #d9c3d1;
+    border-radius: 3px;
+    margin: 10px auto 0;
+  }
+  .sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 22px 6px;
+  }
+  .sheet-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #3d2233;
+  }
+  .sheet-header .balance {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ad3c74;
+  }
+  .sheet-sub {
+    padding: 0 22px 14px;
+    font-size: 0.85rem;
+    color: #8f6c81;
+  }
+
+  .shop-list {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 16px 20px;
+  }
+  .shop-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 16px;
+    padding: 15px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(120,50,90,0.06);
+  }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #3d2233;
+    letter-spacing: -0.01em;
+  }
+  .item-desc {
+    font-size: 0.78rem;
+    color: #9a7a8c;
+    margin-top: 2px;
+  }
+  .buy-btn {
+    flex-shrink: 0;
+    border: none;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    padding: 8px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.2s;
+    background: linear-gradient(135deg, #e8548f, #c2418f);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(212,60,130,0.3);
+  }
+  .buy-btn:active { transform: scale(0.94); }
+  .buy-btn:disabled {
+    background: #eadde5;
+    color: #b79aa9;
+    box-shadow: none;
+    cursor: default;
+  }
+  .buy-btn.owned {
+    background: transparent;
+    color: #2fa06a;
+    box-shadow: none;
+    cursor: default;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 14px; right: 16px;
+    width: 30px; height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(190,160,180,0.2);
+    color: #7a5a6c;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .toast {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px);
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ad3c74;
+    box-shadow: 0 4px 20px rgba(173,60,116,0.2);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+    white-space: nowrap;
+    max-width: 92vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .msg { animation-duration: 1.2s; }
+    .heart-fx, .coin-fx { display: none; }
+    .hint p { animation: none; }
+    .shop-sheet { transition-duration: 0.2s; }
+  }
+</style>
+</head>
+<body>
+
+<div class="playarea" id="playarea"></div>
+
+<div class="hud">
+  <div class="coins" id="coins">💗 <span id="coinCount">0</span></div>
+  <button class="shop-btn" id="openShop">🛍️ Shop</button>
+</div>
+
+<div class="hint" id="hint">
+  <h1>Sofia…</h1>
+  <p>tocca lo schermo 🌸</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="shop-overlay" id="overlay"></div>
+<div class="shop-sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <button class="close-btn" id="closeShop">✕</button>
+  <div class="sheet-header">
+    <h2>Shop</h2>
+    <span class="balance">💗 <span id="shopBalance">0</span></span>
+  </div>
+  <div class="sheet-sub">Sblocca nuove frasi: entreranno nella rotazione a ogni tocco.</div>
+  <div class="shop-list" id="shopList"></div>
+</div>
+
+<script>
+  // ---------- Dati ----------
+  const frasiBase = [
+    "Sofia ti voglio bene 💖",
+    "Sofia ti voglio bene 🥰",
+    "Sofia ti voglio bene 🌸",
+    "Sofia ti voglio bene ✨",
+    "Sofia ti voglio bene 🐻",
+    "Sofia ti voglio bene 🌷",
+    "Sofia ti voglio bene 💕",
+    "Sofia ti voglio bene 🦋",
+    "Sofia ti voglio bene ☁️💗",
+    "Sofia ti voglio bene 🍓",
+    "Sofia ti voglio bene 🌙",
+    "Sofia ti voglio bene 🧸💞"
+  ];
+
+  const shopItems = [
+    { id: "adoro",    frase: "Sofia ti adoro 💘",                cost: 500 },
+    { id: "fanta",    frase: "Sofia sei fantastica 🌟",          cost: 1000 },
+    { id: "simpa",    frase: "Sofia sei simpaticissima 😄💗",    cost: 2000 },
+    { id: "illumini", frase: "Sofia illumini le mie giornate ✨", cost: 3500 },
+    { id: "unica",    frase: "Sofia sei unica al mondo 🌍💖",    cost: 5000 }
+  ];
+
+  const cuoricini = ["💗","💖","💕","✨","🌸","💫"];
+
+  // ---------- Stato (con salvataggio se disponibile) ----------
+  let state = { coins: 0, owned: [] };
+  const store = {
+    load() {
+      try {
+        const raw = localStorage.getItem('sofiaGame');
+        if (raw) state = { ...state, ...JSON.parse(raw) };
+      } catch (e) { /* anteprima senza storage: si gioca in memoria */ }
+    },
+    save() {
+      try { localStorage.setItem('sofiaGame', JSON.stringify(state)); } catch (e) {}
+    }
+  };
+  store.load();
+
+  // ---------- Riferimenti ----------
+  const playarea = document.getElementById('playarea');
+  const hint = document.getElementById('hint');
+  const coinsEl = document.getElementById('coins');
+  const coinCount = document.getElementById('coinCount');
+  const shopBalance = document.getElementById('shopBalance');
+  const overlay = document.getElementById('overlay');
+  const sheet = document.getElementById('sheet');
+  const shopList = document.getElementById('shopList');
+  const toast = document.getElementById('toast');
+
+  let lastFrase = -1;
+  let toastTimer;
+
+  function fraseAttive() {
+    const extra = shopItems.filter(it => state.owned.includes(it.id)).map(it => it.frase);
+    return frasiBase.concat(extra);
+  }
+
+  function updateCoins() {
+    coinCount.textContent = state.coins.toLocaleString('it-IT');
+    shopBalance.textContent = state.coins.toLocaleString('it-IT');
+    coinsEl.classList.add('bump');
+    setTimeout(() => coinsEl.classList.remove('bump'), 150);
+    renderShop();
+  }
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  // ---------- Gioco ----------
+  function tap(x, y) {
+    hint.classList.add('hidden');
+
+    // guadagno: 1 + bonus casuale (8% → +5, 3% → +10)
+    let gain = 1;
+    const r = Math.random();
+    if (r < 0.03) gain = 10;
+    else if (r < 0.11) gain = 5;
+    state.coins += gain;
+    store.save();
+    updateCoins();
+
+    // frase
+    const pool = fraseAttive();
+    let i;
+    do { i = Math.floor(Math.random() * pool.length); } while (i === lastFrase && pool.length > 1);
+    lastFrase = i;
+
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.textContent = pool[i];
+    msg.style.left = Math.min(Math.max(x, 100), window.innerWidth - 100) + 'px';
+    msg.style.top = Math.max(y, 90) + 'px';
+    msg.style.setProperty('--rot', (Math.random() * 8 - 4) + 'deg');
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 2300);
+
+    // +N cuori
+    const cf = document.createElement('div');
+    cf.className = 'coin-fx' + (gain > 1 ? ' bonus' : '');
+    cf.textContent = gain > 1 ? `+${gain} 💗 BONUS!` : '+1 💗';
+    cf.style.left = x + 'px';
+    cf.style.top = (y - 30) + 'px';
+    document.body.appendChild(cf);
+    setTimeout(() => cf.remove(), 1200);
+
+    // cuoricini fx
+    const n = gain > 1 ? 9 : 4;
+    for (let k = 0; k < n; k++) {
+      const h = document.createElement('div');
+      h.className = 'heart-fx';
+      h.textContent = cuoricini[Math.floor(Math.random() * cuoricini.length)];
+      h.style.left = x + 'px';
+      h.style.top = y + 'px';
+      h.style.setProperty('--dx', (Math.random() * 150 - 75) + 'px');
+      h.style.setProperty('--dy', (Math.random() * -110 - 30) + 'px');
+      h.style.setProperty('--hr', (Math.random() * 60 - 30) + 'deg');
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 1800);
+    }
+  }
+
+  playarea.addEventListener('pointerdown', e => tap(e.clientX, e.clientY));
+
+  // ---------- Shop ----------
+  function renderShop() {
+    shopList.innerHTML = '';
+    shopItems.forEach(item => {
+      const owned = state.owned.includes(item.id);
+      const canBuy = state.coins >= item.cost;
+
+      const row = document.createElement('div');
+      row.className = 'shop-item';
+
+      const info = document.createElement('div');
+      info.className = 'item-info';
+      const name = document.createElement('div');
+      name.className = 'item-name';
+      name.textContent = item.frase;
+      const desc = document.createElement('div');
+      desc.className = 'item-desc';
+      desc.textContent = owned ? 'In rotazione' : `💗 ${item.cost.toLocaleString('it-IT')} cuori`;
+      info.appendChild(name);
+      info.appendChild(desc);
+
+      const btn = document.createElement('button');
+      btn.className = 'buy-btn' + (owned ? ' owned' : '');
+      if (owned) {
+        btn.textContent = '✓ Sbloccata';
+        btn.disabled = true;
+      } else {
+        btn.textContent = 'Sblocca';
+        btn.disabled = !canBuy;
+        btn.addEventListener('click', () => buy(item));
+      }
+
+      row.appendChild(info);
+      row.appendChild(btn);
+      shopList.appendChild(row);
+    });
+  }
+
+  function buy(item) {
+    if (state.coins < item.cost || state.owned.includes(item.id)) return;
+    state.coins -= item.cost;
+    state.owned.push(item.id);
+    store.save();
+    updateCoins();
+    showToast(`Sbloccata: ${item.frase}`);
+  }
+
+  function openShop() {
+    renderShop();
+    overlay.classList.add('open');
+    sheet.classList.add('open');
+  }
+  function closeShop() {
+    overlay.classList.remove('open');
+    sheet.classList.remove('open');
+  }
+
+  document.getElementById('openShop').addEventListener('click', openShop);
+  document.getElementById('closeShop').addEventListener('click', closeShop);
+  overlay.addEventListener('click', closeShop);
+
+  // init
+  updateCoins();
+</script>
+
+</body>
+</html>
